@@ -1,2 +1,3 @@
-name = gets.chomp
-puts "Hello #{name}!"
+require 'openssl'
+
+def create_wallet; end
