@@ -1,39 +1,35 @@
 require 'bitcoin'
-require 'optparse'
+require 'digest'
+
+require_relative 'mempool_api_client'
 
 Bitcoin.chain_params = :testnet
 
 def create
-  entropy = SecureRandom.hex(16)
-  mnemonic = Bitcoin::Mnemonic.new('english')
-  word_list = mnemonic.to_mnemonic(entropy) # 12 слов
-  puts "Please remember this words #{word_list}"
-  seed = mnemonic.to_seed(word_list)
-  master_key = Bitcoin::ExtKey.generate_master(seed)
-
-  key = master_key
-    .derive(84, true)
-    .derive(0, true)
-    .derive(0, true)
-    .derive(0)
-    .derive(0)
-
+  privkey = SecureRandom.hex(128)
   File.open('private_key', 'wx') do |f|
-    f.write(key.to_base58)
-  rescue Errno::EEXIST
-    puts 'You already have wallet'
+    f.write(privkey)
   end
-
-  puts "Your address is #{key.addr}"
+rescue Errno::EEXIST
+  puts 'Private key exist'
 end
 
-def restore
-  File.open('private_key', 'r') do |f|
-    ext_privkey = Bitcoin::ExtKey.from_base58(f.read)
-  rescue Errno::ENOENT
-    puts 'Private key not found'
-  end
-  puts 'Private key restored'
+def balance
+  privkey = File.open('private_key', 'r') { |f| f.read }
+  pubkey = Bitcoin::Secp256k1::Ruby.generate_pubkey(privkey)
+  wpkh = Bitcoin::Descriptor::Wpkh.new(pubkey)
+  addr = wpkh.to_script.to_addr
+  utxos =  MempoolApiClient.get_utxo(addr)
+  satoshies = utxos
+    .filter { |utx| utx[:status][:confirmed] }
+    .reduce(0) { |tot_amount, utx| tot_amount + utx[:value] }
+  satoshi2btc(satoshies)
+rescue Errno::ENOENT
+  puts 'No private key'
+end
+
+def satoshi2btc(satoshi)
+  satoshi * 1e-8
 end
 
 # TODO: нормально парсить аргументы
@@ -44,9 +40,7 @@ end
 
 case ARGV[0]
 when 'create' then create
-when 'balance'
-when 'send'
-when 'restore' then restore
+when 'balance' then puts "Balance: #{balance} BTC"
 else
   puts 'Enter one of this commands: create, balance, send'
 end
