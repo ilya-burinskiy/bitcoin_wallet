@@ -9,4 +9,11 @@ module MempoolApiClient
       symbolize_names: true
     )
   end
+
+  def self.get_transaction(txid)
+    JSON.parse(
+      Net::HTTP.get(URI("https://mempool.space/signet/api/tx/#{txid}")),
+      symbolize_names: true
+    )
+  end
 end
