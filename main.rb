@@ -4,6 +4,8 @@ require 'optparse'
 
 require_relative 'mempool_api_client'
 
+COMISSION_SATOSHIES = 1000
+
 Bitcoin.chain_params = :testnet
 
 def create
@@ -42,13 +44,23 @@ def send_(receiver_addr, btc_amount)
   pubkey = Bitcoin::Secp256k1::Ruby.generate_pubkey(privkey)
   wpkh = Bitcoin::Descriptor::Wpkh.new(pubkey)
   addr = wpkh.to_script.to_addr
-  utxos =  MempoolApiClient.get_utxo(addr)
-  satoshies = utxos
+  confirmed_utxos =  MempoolApiClient
+    .get_utxo(addr)
     .filter { |utx| utx[:status][:confirmed] }
-    .map { |utx| utx[:value] }
-  # проверять баланс. current_balance > btc_amount + commision
-  # используем все utxo
-  # сдачу на себя
+  satoshies_balance = confirmed_utxos.reduce(0) { |sum, utx| sum + utx[:value] }
+
+  satoshies_amount = btc2satoshi(btc_amount) + CO
+  if satoshies_balance < btc2satoshi(btc_amount) + COMISSION_SATOSHIES
+    puts 'Not enough coins'
+    return
+  end
+
+  my_vouts = confirmed_utxos.each_with_object({}) do |utxo, h|
+    tx = MempoolApiClient.get_transaction(utxo[:txid])
+    h[utxo[:txid]] = tx[:vout].filter { |vout| vout[:scriptpubkey_address] == addr }
+  end
+
+  puts my_vouts
   puts "Sending #{btc_amount} to #{receiver_addr}"
 end
 
