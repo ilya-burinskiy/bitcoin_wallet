@@ -16,4 +16,15 @@ module MempoolApiClient
       symbolize_names: true
     )
   end
+
+  def self.create_tx(payload)
+    uri = URI('https://mempool.space/signet/api/tx') 
+    req = Net::HTTP::Post.new(uri)
+    req.body = payload
+    res = Net::HTTP.start(uri.hostname) do |http|
+      http.request(req)
+    end
+
+    res.body
+  end
 end
