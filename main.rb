@@ -17,7 +17,7 @@ rescue Errno::EEXIST
   puts 'Private key exist'
 end
 
-def balance
+def get_balance
   privkey = File.open('private_key', 'r') { |f| f.read }
   pubkey = Bitcoin::Secp256k1::Ruby.generate_pubkey(privkey)
   wpkh = Bitcoin::Descriptor::Wpkh.new(pubkey)
@@ -29,6 +29,7 @@ def balance
   satoshi2btc(satoshies)
 rescue Errno::ENOENT
   puts 'No private key'
+  -1
 end
 
 def satoshi2btc(satoshi)
@@ -72,7 +73,11 @@ end
 
 case ARGV[0]
 when 'create' then create
-when 'balance' then puts "Balance: #{balance} BTC"
+when 'balance'
+  balance = get_balance
+  if balance >= 0
+    puts "Balance: #{balance} BTC"
+  end
 when 'send'
   btc_amount = nil
   receiver_addr = nil
