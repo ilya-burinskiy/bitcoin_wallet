@@ -9,7 +9,7 @@ COMISSION_SATOSHIES = 1000
 Bitcoin.chain_params = :testnet
 
 def create
-  privkey = SecureRandom.hex(128)
+  privkey = SecureRandom.hex(32)
   File.open('private_key', 'wx') do |f|
     f.write(privkey)
   end
