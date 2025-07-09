@@ -1,5 +1,4 @@
 require 'bitcoin'
-require 'digest'
 require 'optparse'
 
 require_relative 'mempool_api_client'
@@ -69,32 +68,39 @@ def send_(to_addr, btc_amount)
       script_pubkey: Bitcoin::Script.parse_from_addr(from_addr)
     )
   end
-  from_addr_confirmed_utxos.each do |utxo_attrs|
-    utxo = MempoolApiClient.get_transaction(utxo_attrs[:txid])
-    vout_idxs = utxo[:vout]
-    utxo[:vout]
-      .each_with_index
-      .filter { |vout, idx| vout[:scriptpubkey_address] == from_addr }
-      .map { |_vout, idx| idx }
-      .each_with_index do |vout_idx, input_idx|
-        tx.in << Bitcoin::TxIn.new(out_point: Bitcoin::OutPoint.from_txid(utxo[:txid], vout_idx))
-        script_pubkey = Bitcoin::Script.parse_from_payload(
-          utxo[:vout][vout_idx][:scriptpubkey].htb
-        )
-        sig_hash = tx.sighash_for_input(
-          input_idx,
-          script_pubkey,
-          sig_version: :witness_v0,
-          amount: utxo[:vout][vout_idx][:value]
-        )
-        btc_key = Bitcoin::Key.new(priv_key: privkey)
-        signature = btc_key.sign(sig_hash) + [Bitcoin::SIGHASH_TYPE[:all]].pack('C')
-        tx.in[input_idx].script_witness.stack << signature << btc_key.pubkey.htb
-      end
-  end
 
-  puts tx.to_payload.unpack('H*')
-  # puts "Sending #{btc_amount} to #{receiver_addr}"
+  btc_key = Bitcoin::Key.new(priv_key: privkey)
+  from_addr_confirmed_utxos
+    .map { |utxo_attrs| MempoolApiClient.get_transaction(utxo_attrs[:txid]) }
+    .each_with_index do |utxo, input_idx|
+      utxo[:vout]
+        .each_with_index
+        .filter { |vout, idx| vout[:scriptpubkey_address] == from_addr }
+        .map { |_vout, idx| idx }
+        .each do |vout_idx|
+          tx.in << Bitcoin::TxIn.new(out_point: Bitcoin::OutPoint.from_txid(utxo[:txid], vout_idx))
+          script_pubkey = Bitcoin::Script.parse_from_payload(
+            utxo[:vout][vout_idx][:scriptpubkey].htb
+          )
+          sig_hash = tx.sighash_for_input(
+            input_idx,
+            script_pubkey,
+            sig_version: :witness_v0,
+            amount: utxo[:vout][vout_idx][:value]
+          )
+          signature = btc_key.sign(sig_hash) + [Bitcoin::SIGHASH_TYPE[:all]].pack('C')
+          tx.in[input_idx].script_witness.stack << signature << btc_key.pubkey.htb
+          unless tx.verify_input_sig(input_idx, script_pubkey, amount: utxo[:vout][vout_idx][:value])
+            raise "input_idx=#{input_idx} signature failed"
+          end
+        end
+  end
+  debugger
+  raise 'Invalid tx' unless tx.valid?
+
+  payload = tx.to_hex
+  puts payload
+  puts MempoolApiClient.create_tx(payload)
 end
 
 # TODO: нормально парсить аргументы
