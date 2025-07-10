@@ -1,20 +1,9 @@
-# Сборка образа
-`docker build -t bitcoin_wallet .`
-# Запуск контейнера
-`docker run --name bitcoin_wallet --rm -d -v $(pwd):/usr/src/bitcoin_wallet bitcoin_wallet:latest`
-# Запуск терминала в контейнере
-`docker exec -it bitcoin_wallet bash`
-
-# Терминология
-Адрес (aka public key) выглядет так  1DSrfJdB2AnWaFNgSbv3MZC2m74996JafV. Аналогия с email
-Секретный ключ (secret key, private key) — это главный пароль к криптовалютному кошельку. У кого есть этот ключ — тот полностью контролирует все средства на соответствующем адресе.
-Транзакция - перевод биткойнов с одного адреса на другой.
-Блок - набор транзакций с таймстампом, фингерпринтом предыдущего блока
-
-# Как работает:
-Когда создаётся криптокошелёк, формируются:
-- Private key — держится в тайне
-- Public key — используется для создания адреса кошелька.
-Секретный ключ используется для:
-- Подписи транзакций (доказательство, что это именно вы отправляете средства);
-- Восстановления доступа к кошельку.
+# Сборка
+`docker compose build`
+# Создание кошелька
+`docker compose run bitcoin-wallet create`
+# Получение баланса
+`docker compose run bitcoin-wallet balance`
+# Отправка биткоинов
+`docker compose run bitcoin-wallet send --addr ADRESS --amount AMOUNT`\
+AMOUNT в биткоинах (Например 0.00001).
