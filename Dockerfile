@@ -5,4 +5,4 @@ COPY Gemfile Gemfile.lock ./
 RUN bundle lock --add-platform x86_64-linux \
     && bundle install
 COPY . .
-ENTRYPOINT ["tail", "-f", "/dev/null"]
+ENTRYPOINT ["ruby", "main.rb"]

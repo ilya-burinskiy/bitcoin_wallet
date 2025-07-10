@@ -1,0 +1,6 @@
+services:
+  bitcoin-wallet:
+    container_name: bitcoin-wallet
+    build: .
+    volumes:
+      - ./:/usr/src/bitcoin_wallet
